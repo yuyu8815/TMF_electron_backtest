@@ -3,14 +3,13 @@ import matplotlib.pyplot as plt
 import datetime as dt
 from IPython.display import display
 import tqdm  # 先加這個，若還沒安裝：pip install tqdm
+import tetrion.commands as cmd
+
 class PnLAnalyzer:
     def __init__(self, df_dict):
         self.df_dict = df_dict
         self.pnl_dict = {}
     def get_top_n_worst_days(self, n=5):
-        """
-        回傳虧損最慘的 n 天 (由 Net PnL 排序)，格式為 [(date, total_pnl), ...]
-        """
         if not self.pnl_dict:
             print("請先執行 compute_daily_pnl()")
             return []
@@ -344,10 +343,6 @@ class PnLAnalyzer:
         self.get_top_n_worst_days2()
         self.plot_daily_pnl()
 
-# testing for Github
-#git add .
-#git commit -m "更新了XXX"
-#git push
 
 
  
