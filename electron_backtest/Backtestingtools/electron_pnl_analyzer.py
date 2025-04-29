@@ -345,6 +345,9 @@ class PnLAnalyzer:
         self.plot_daily_pnl()
 
 # testing for Github
+#git add .
+#git commit -m "更新了XXX"
+#git push
 
 
  
