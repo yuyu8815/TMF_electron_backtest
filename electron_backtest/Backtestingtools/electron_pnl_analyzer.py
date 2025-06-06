@@ -26,7 +26,7 @@ class PnLAnalyzer:
         return day_pnls[:n]
 
 
-    def compute_daily_pnl_TMF(self):
+    def compute_daily_pnl(self):
         carry_positions = {}
         carry_prices = {}
 
@@ -152,7 +152,7 @@ class PnLAnalyzer:
                 "Time", "Contract", "Product", "Price", "size",
                 "Cumulative Position", "PnL Change", "Fee", "PnL Net"
             ]]
-            print(f"\n {date} 最虧損的10筆交易：")
+            print(f"\n {date} Top Ten Loss：")
             print(worst.to_string(index=False))
 
             print(f"\n {date} 各到期月份總損益：")
@@ -322,7 +322,7 @@ class PnLAnalyzer:
                 df["Net PnL (after fee)"].iloc[-1]
                 for df in result["results_by_expiry"].values()
             )
-            total_pnl_usd = total_pnl/ 33.0
+            total_pnl_usd = total_pnl/ 30
             day_pnls.append((date, total_pnl_usd))
 
         # 先排序（虧損最大在最前面）
@@ -333,13 +333,13 @@ class PnLAnalyzer:
 
         # 額外列出最慘的 N 天
         sorted_by_pnl = sorted(day_pnls, key=lambda x: x[1])
-        print("\n虧損最慘的前 {} 天：".format(n))
+        print("\ntop {} days loss：".format(n))
         print("=" * 50)
         for i, (date, pnl) in enumerate(sorted_by_pnl[:n], 1):
             print(f"{i}. {date} → {pnl:,.2f} USD")
 
-    def run_full_report_TMF(self):
-        self.compute_daily_pnl_TMF()
+    def run_full_report(self):
+        self.compute_daily_pnl()
         self.get_top_n_worst_days2()
         self.plot_daily_pnl()
 
