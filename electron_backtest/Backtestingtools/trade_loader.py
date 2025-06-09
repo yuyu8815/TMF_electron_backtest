@@ -321,3 +321,84 @@ class TradeLoaderNeutrino:
 
         return df_dict
 
+def build_df_dict_night(
+    start,
+    end,
+    strat="capital_electron_tmf",
+    acc="TAIFEX100",
+    redishost="prod1.capital.radiant-knight.com"
+):
+    if isinstance(start, str):
+        start = parse_comma_date(start)
+    if isinstance(end, str):
+        end = parse_comma_date(end)
+
+    df_dict = {}
+    date_list = pd.date_range(start=start, end=end).to_pydatetime()
+
+    for d in tqdm(date_list, desc="Loading fills by day"):
+        d = d.date()
+        dfs = []
+
+        for night in [True]:
+            df = get_fills_from_redis(
+                strat=strat,
+                acc=acc,
+                date=d,
+                night_session=night,
+                redishost=redishost
+            )
+            if df is not None and not df.empty:
+                dfs.append(df.reset_index())
+
+        if dfs:
+            full = pd.concat(dfs, ignore_index=True)
+            full["time"] = pd.to_datetime(full["time"])
+            full = full.sort_values("time").reset_index(drop=True)
+            df_dict[d] = full
+        else:
+            print(f"No data for {d}")
+            # None
+
+    return df_dict
+
+def build_df_dict_day(
+    start,
+    end,
+    strat="capital_electron_tmf",
+    acc="TAIFEX100",
+    redishost="prod1.capital.radiant-knight.com"
+):
+    if isinstance(start, str):
+        start = parse_comma_date(start)
+    if isinstance(end, str):
+        end = parse_comma_date(end)
+
+    df_dict = {}
+    date_list = pd.date_range(start=start, end=end).to_pydatetime()
+
+    for d in tqdm(date_list, desc="Loading fills by day"):
+        d = d.date()
+        dfs = []
+
+        for night in [False]:
+            df = get_fills_from_redis(
+                strat=strat,
+                acc=acc,
+                date=d,
+                night_session=night,
+                redishost=redishost
+            )
+            if df is not None and not df.empty:
+                dfs.append(df.reset_index())
+
+        if dfs:
+            full = pd.concat(dfs, ignore_index=True)
+            full["time"] = pd.to_datetime(full["time"])
+            full = full.sort_values("time").reset_index(drop=True)
+            df_dict[d] = full
+        else:
+            print(f"No data for {d}")
+            # None
+
+    return df_dict
