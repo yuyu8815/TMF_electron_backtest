@@ -340,9 +340,138 @@ class PnLAnalyzer:
 
     def run_full_report(self):
         self.compute_daily_pnl()
-        self.get_top_n_worst_days2()
+        # self.get_top_n_worst_days2()
         self.plot_daily_pnl()
+        
+    def get_daily_total_pnl(self):
+        """回傳一個 Series，index 是日期，值是當日總損益"""
+        if not self.pnl_dict:
+            raise ValueError("請先執行 compute_daily_pnl() 或 run_full_report()")
 
+        return pd.Series({
+            date: sum(
+                df["Net PnL (after fee)"].iloc[-1]
+                for df in result["results_by_expiry"].values()
+            )
+            for date, result in self.pnl_dict.items()
+        }).sort_index()
+    @staticmethod
+    def merge_analyzers_multiindex(a1, a2, label1="a1", label2="a2"):
+        """合併兩個 analyzer 為 MultiIndex df，並為每個合約加上 Total 行"""
+        records = []
 
+        for analyzer, label in [(a1, label1), (a2, label2)]:
+            for date, result in analyzer.pnl_dict.items():
+                for expiry, df in result["results_by_expiry"].items():
+                    pnl = df["Net PnL (after fee)"].iloc[-1]
+                    records.append((expiry, date, label, pnl))
 
- 
+        df = pd.DataFrame(records, columns=["expiry", "date", "label", "pnl"])
+        df_pivot = df.pivot_table(index=["expiry", "date"], columns="label", values="pnl")
+
+        # 加上每個 expiry 的 Total row
+        total_rows = (
+            df_pivot
+            .groupby(level="expiry")
+            .sum()
+            .assign(date="Total")
+            .set_index("date", append=True)
+        )
+
+        df_with_total = pd.concat([df_pivot, total_rows]).sort_index()
+        return df_with_total.round(2)
+
+    # def plot_overlay_with(analyzer1, analyzer2, date, label1="analyzer1", label2="analyzer2"):
+    #     if isinstance(date, str):
+    #         date = pd.to_datetime(date).date()
+
+    #     result1 = analyzer1.pnl_dict.get(date)
+    #     result2 = analyzer2.pnl_dict.get(date)
+
+    #     if not result1 or not result2:
+    #         print(f"{date} 不存在於其中一個 analyzer 中")
+    #         return
+
+    #     all_expiries = sorted(set(result1["results_by_expiry"].keys()) | set(result2["results_by_expiry"].keys()))
+
+    #     fig, ax = plt.subplots(figsize=(12, 6))
+
+    #     color_map = {}
+    #     for i, expiry in enumerate(all_expiries):
+    #         color_map[expiry] = f"C{i % 10}"
+
+    #     for expiry in all_expiries:
+    #         if expiry in result1["results_by_expiry"]:
+    #             df1 = result1["results_by_expiry"][expiry].sort_values("Time")
+    #             ax.plot(
+    #                 df1["Time"], df1["Net PnL (after fee)"],
+    #                 label=f"{expiry} ({label1})",
+    #                 linestyle="--", color=color_map[expiry], alpha=0.8
+    #             )
+    #         if expiry in result2["results_by_expiry"]:
+    #             df2 = result2["results_by_expiry"][expiry].sort_values("Time")
+    #             ax.plot(
+    #                 df2["Time"], df2["Net PnL (after fee)"],
+    #                 label=f"{expiry} ({label2})",
+    #                 linestyle="-", color=color_map[expiry], alpha=0.8
+    #             )
+
+    #     ax.axhline(0, color="black", linestyle="--")
+    #     ax.set_title(f"{date} Net PnL Overlay")
+    #     ax.set_xlabel("Time")
+    #     ax.set_ylabel("Net PnL (After Fee)")
+    #     ax.legend()
+    #     ax.grid(True)
+    #     plt.xticks(rotation=45)
+    #     plt.tight_layout()
+    #     plt.show()
+    def plot_overlay_with(analyzer1, analyzer2, date, label1="analyzer1", label2="analyzer2"):
+        if isinstance(date, str):
+            date = pd.to_datetime(date).date()
+
+        result1 = analyzer1.pnl_dict.get(date)
+        result2 = analyzer2.pnl_dict.get(date)
+
+        if not result1 or not result2:
+            print(f"{date} 不存在於其中一個 analyzer 中")
+            return
+
+        all_expiries = sorted(set(result1["results_by_expiry"].keys()) | set(result2["results_by_expiry"].keys()))
+
+        fig, ax = plt.subplots(figsize=(12, 6))
+
+        color_map = {}
+        for i, expiry in enumerate(all_expiries):
+            color_map[expiry] = f"C{i % 10}"
+
+        for expiry in all_expiries:
+            if expiry in result1["results_by_expiry"]:
+                df1 = result1["results_by_expiry"][expiry].sort_values("Time")
+                ax.plot(
+                    df1["Time"], df1["Net PnL (after fee)"],
+                    label=f"{expiry} ({label1})",
+                    linestyle="--", color=color_map[expiry], alpha=0.8
+                )
+            if expiry in result2["results_by_expiry"]:
+                df2 = result2["results_by_expiry"][expiry].sort_values("Time")
+                ax.plot(
+                    df2["Time"], df2["Net PnL (after fee)"],
+                    label=f"{expiry} ({label2})",
+                    linestyle="-", color=color_map[expiry], alpha=0.8
+                )
+
+        ax.axhline(0, color="black", linestyle="--")
+        ax.set_title(f"{date} Net PnL Overlay")
+        ax.set_xlabel("Time")
+        ax.set_ylabel("Net PnL (After Fee)")
+        ax.legend()
+        ax.grid(True)
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        plt.show()
+
+    @staticmethod
+    def plot_overlay_all_dates(analyzer1, analyzer2, label1="analyzer1", label2="analyzer2"):
+        common_dates = sorted(set(analyzer1.pnl_dict.keys()) & set(analyzer2.pnl_dict.keys()))
+        for date in common_dates:
+            PnLAnalyzer.plot_overlay_with(analyzer1, analyzer2, date, label1, label2)
